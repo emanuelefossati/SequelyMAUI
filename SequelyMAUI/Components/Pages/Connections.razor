@@ -1,0 +1,130 @@
+﻿@using Models
+@using System.Text.Json
+@using SequelyMAUI.Components.Utils
+
+
+@inject IConnectionHandler ConnectionHandler
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+@page "/connections"
+
+
+<MudPaper Elevation="25">
+    <MudToolBar>
+        <MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" Class="mr-5" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Add" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Edit" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Remove" Color="Color.Inherit" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Settings" Color="Color.Inherit" />
+        <MudSpacer />
+    </MudToolBar>
+</MudPaper>
+
+<MudPaper Width="60%" Style="margin: auto;" Elevation="0" Class="rounded-xl">
+    <MudTable T="Connection" Items="@connections" Hover="true" SortLabel="Sort By" Bordered="true" FixedHeader="true" Class="mt-15" Elevation="5" Height="400px" @bind-SelectedItem="@connectionSelected"
+               OnRowClick="@SelectConnection">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Name)">Connection Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Address)">Address</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Port!)">Port</MudTableSortLabel></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Connection Name">@context!.Name</MudTd>
+            <MudTd DataLabel="Address">@context!.Address</MudTd>
+            <MudTd DataLabel="Port">@context!.Port</MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudPaper>
+<MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Style="position:fixed; bottom:100px;right:200px" OnClick="CreateConnection" />
+
+@code 
+    {
+    List<Connection> connections;
+    Connection? connectionSelected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        connections = await ConnectionHandler.GetConnections();
+    }
+
+    private async Task SelectConnection()
+    {
+        var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
+        var parameters = new DialogParameters<ConnectionManagementDialog> { { x => x.incomingConnection, connectionSelected } };
+
+        var dialog = await DialogService.ShowAsync<ConnectionManagementDialog>("Edit connection", parameters, options);
+
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+        {
+            return;
+        }
+
+        ConnectionOperationModel connectionOperationModel = JsonSerializer.Deserialize<ConnectionOperationModel>(result.Data.ToString()!)!;
+
+        if(connectionOperationModel.Operations.First() == ConnectionOperationType.Delete)
+        {
+            connections.Remove(connectionSelected!);
+            await ConnectionHandler.SaveConnections(connections);
+
+            return;
+        }
+
+        await ConnectionHandler.SaveConnections(connections);
+
+        try
+        {
+            await ConnectionHandler.ConnectTo(connectionSelected!);
+
+            NavigationManager.NavigateTo("mysql-dashboard");
+        }
+
+        catch (Exception e)
+        {
+            options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
+
+            var errorParameters = new DialogParameters<InfoDialog>();
+            errorParameters.Add(x => x.ContentText, e.Message.ToString());
+
+            dialog = await DialogService.ShowAsync<InfoDialog>("Error", errorParameters, options);
+        }
+    }
+
+    private async Task CreateConnection()
+    {
+     
+        var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
+        var dialog = await DialogService.ShowAsync<ConnectionManagementDialog>("New connection", options);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+
+            ConnectionOperationModel connectionOperationModel = JsonSerializer.Deserialize<ConnectionOperationModel>(result.Data.ToString()!)!;
+            Connection connectionCreated = connectionOperationModel.ConnectionModel!;
+            connections.Insert(0, connectionCreated);
+            await ConnectionHandler.SaveConnections(connections);
+
+            await ConnectionHandler.ConnectTo(connectionCreated);
+
+            NavigationManager.NavigateTo("mysql-dashboard");
+        }
+
+        catch (Exception e)
+        {
+            options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
+
+            var parameters = new DialogParameters<InfoDialog>();
+            parameters.Add(x => x.ContentText, e.Message.ToString());
+
+            dialog = await DialogService.ShowAsync<InfoDialog>("Error", parameters, options);
+        }
+    }
+}
