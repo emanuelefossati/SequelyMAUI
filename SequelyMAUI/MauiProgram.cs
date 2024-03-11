@@ -24,6 +24,7 @@ namespace SequelyMAUI
             builder.Services.AddMudServices();
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddSingleton<IConnectionHandler, ConnectionHandler>();
+            builder.Services.AddSingleton<IDbHandler, DbHandler>();
 
 //#if WINDOWS
 //            builder.ConfigureLifecycleEvents(events => {

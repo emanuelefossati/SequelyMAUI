@@ -45,24 +45,23 @@
         }
         catch (Exception e)
         {
+            await ConnectionHandler.Disconnect();
+            
             var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
 
             var parameters = new DialogParameters<InfoDialog>();
-            parameters.Add(x => x.ContentText, e.ToString());
+            parameters.Add(x => x.ContentText, e.Message.ToString());
 
             var dialog = await DialogService.ShowAsync<InfoDialog>("Error", parameters, options);
+            var result = await dialog.Result;
         } 
         finally
         {
             if (previousConnection == null)
-            {
                 NavigationManager.NavigateTo("connections");
-            }
 
             else
-            {
                 NavigationManager.NavigateTo("mysql-dashboard");
-            }
         }
     }
 }

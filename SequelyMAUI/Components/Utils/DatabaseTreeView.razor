@@ -1,0 +1,74 @@
+﻿@using SequelyMAUI.Models
+@inject IConnectionHandler ConnectionHandler
+@inject IDbHandler DbHandler
+
+<link href="https://use.fontawesome.com/releases/v5.14.0/css/all.css" rel="stylesheet">
+
+<MudTreeView ServerData="LoadTables" Items="dbTreeItems" Hover="true" Color="Color.Info">
+    <ItemTemplate>
+        <MudTreeViewItem Value="@context" Icon="@context.Icon" LoadingIconColor="Color.Info" CanExpand="@context.CanExpand" Text="@context.Title" OnDoubleClick="@(() => OnDoubleClick.InvokeAsync(context.Value))"/>
+    </ItemTemplate>
+</MudTreeView>
+        
+
+@code 
+{
+
+    [Parameter]
+    public List<Database> Databases { get; set; } = new List<Database>();
+
+    [Parameter] 
+    public EventCallback<MySqlElement> OnDoubleClick { get; set; }
+    //public HashSet<Database> dbs { get; set; } = new HashSet<Database>();
+    public HashSet<TreeItemData> dbTreeItems { get; set; } = new HashSet<TreeItemData>();
+
+    //string SelectedItem { get; set; }
+
+
+
+    protected override void OnInitialized()
+    {
+        foreach (var db in Databases)
+            dbTreeItems.Add(new TreeItemData(db));
+    }
+
+
+    public class TreeItemData
+    {
+        public MySqlElement Value { get; set; }
+
+        public string Title { get; set; }
+        public string Icon { get; set; }
+        public bool CanExpand { get; set; }
+
+        public HashSet<TreeItemData>? TreeItems { get; set; }
+
+        public TreeItemData(MySqlElement value)
+        {
+            Value = value;
+            Title = value.Name;
+
+            if(Value is Database)
+            {
+                Icon = "fas fa-database";
+                CanExpand = true;
+            }
+            else if(Value is Table)
+            {
+                Icon = Icons.Material.Filled.TableChart;
+                CanExpand = false;
+            }
+
+            else
+                throw new Exception("Invalid type");
+        }
+
+    }
+
+    private async Task<HashSet<TreeItemData>> LoadTables(TreeItemData db)
+    {
+        var tables = await DbHandler.GetTables((db.Value as Database)!);
+
+        return tables.Select(t => new TreeItemData(t)).ToHashSet();
+    }
+}

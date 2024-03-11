@@ -83,6 +83,8 @@ namespace SequelyMAUI.Services
 
         public async Task Disconnect()
         {
+            SecureStorage.Default.Remove("current_connection");
+
             if (CurrentMySqlConnection == null)
             {
                 return;
