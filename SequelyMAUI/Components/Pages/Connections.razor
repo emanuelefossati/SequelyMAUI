@@ -1,11 +1,12 @@
 ﻿@using Models
 @using System.Text.Json
 @using SequelyMAUI.Components.Utils
+@using Entities
 
 
-@inject IConnectionHandler ConnectionHandler
-@inject IDialogService DialogService
-@inject NavigationManager NavigationManager
+@inject IConnectionService _ConnectionService
+@inject IDialogService _DialogService
+@inject NavigationManager _NavigationManager
 
 @page "/connections"
 
@@ -21,13 +22,13 @@
     </MudToolBar>
 </MudPaper>
 
-<MudPaper Width="60%" Style="margin: auto;" Elevation="0" Class="rounded-xl">
-    <MudTable T="Connection" Items="@connections" Hover="true" SortLabel="Sort By" Bordered="true" FixedHeader="true" Class="mt-15" Elevation="5" Height="400px" @bind-SelectedItem="@connectionSelected"
+<MudPaper Width="60%" Height="fit-content" Style="margin: auto;" Elevation="0"  Class="rounded-xl">
+    <MudTable T="ConnectionEntity" Items="@(_ConnectionService.Connections.OrderByDescending(x => x.Id).ToList())" Hover="true" SortLabel="Sort By" Bordered="true" FixedHeader="true" Class="mt-15" Elevation="5"  Height="@(_ConnectionService.Connections.Count() <= 7 ? "fit-content" : "427px")" @bind-SelectedItem="@connectionSelected"
                OnRowClick="@SelectConnection">
         <HeaderContent>
-            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Name)">Connection Name</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Address)">Address</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<Connection, object>(x=>x.Port!)">Port</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Name)">Connection Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Address)">Address</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Port!)">Port</MudTableSortLabel></MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Connection Name">@context!.Name</MudTd>
@@ -40,91 +41,66 @@
 
 @code 
     {
-    List<Connection> connections;
-    Connection? connectionSelected;
-
-    protected override async Task OnInitializedAsync()
-    {
-        connections = await ConnectionHandler.GetConnections();
-    }
+    ConnectionEntity? connectionSelected;
 
     private async Task SelectConnection()
     {
         var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
         var parameters = new DialogParameters<ConnectionManagementDialog> { { x => x.incomingConnection, connectionSelected } };
-
-        var dialog = await DialogService.ShowAsync<ConnectionManagementDialog>("Edit connection", parameters, options);
+        var dialog = await _DialogService.ShowAsync<ConnectionManagementDialog>("Edit connection", parameters, options);
 
         var result = await dialog.Result;
-
         if (result.Canceled)
+            return;
+
+        List<ConnectionOperationType> connectionOperations = JsonSerializer.Deserialize<List<ConnectionOperationType>>(result.Data.ToString()!)!;
+
+        if(connectionOperations.First() == ConnectionOperationType.Delete)
         {
+            await _ConnectionService.DeleteConnection(connectionSelected!);
             return;
         }
 
-        ConnectionOperationModel connectionOperationModel = JsonSerializer.Deserialize<ConnectionOperationModel>(result.Data.ToString()!)!;
+        if(connectionOperations.First() == ConnectionOperationType.Edit)
+            await _ConnectionService.EditConnection(connectionSelected!);
 
-        if(connectionOperationModel.Operations.First() == ConnectionOperationType.Delete)
+        if(connectionOperations.Last() != ConnectionOperationType.Connect)
+            return;
+
+        await _ConnectionService.EditConnection(connectionSelected!);
+
+        string? error = await _ConnectionService.ConnectTo(connectionSelected!);
+        if (error != null)
         {
-            connections.Remove(connectionSelected!);
-            await ConnectionHandler.SaveConnections(connections);
-
+            await _DialogService.ShowMessageBox("Error", error);
             return;
         }
 
-        await ConnectionHandler.SaveConnections(connections);
-
-        try
-        {
-            await ConnectionHandler.ConnectTo(connectionSelected!);
-
-            NavigationManager.NavigateTo("mysql-dashboard");
-        }
-
-        catch (Exception e)
-        {
-            options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
-
-            var errorParameters = new DialogParameters<InfoDialog>();
-            errorParameters.Add(x => x.ContentText, e.Message.ToString());
-
-            dialog = await DialogService.ShowAsync<InfoDialog>("Error", errorParameters, options);
-        }
+        _NavigationManager.NavigateTo("mysql-dashboard");
     }
 
     private async Task CreateConnection()
     {
-     
+
         var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
-        var dialog = await DialogService.ShowAsync<ConnectionManagementDialog>("New connection", options);
+        var dialog = await _DialogService.ShowAsync<ConnectionManagementDialog>("New connection", options);
         var result = await dialog.Result;
 
         if (result.Canceled)
-        {
+            return;
+
+        ConnectionEntity connectionCreated = JsonSerializer.Deserialize<ConnectionEntity>(result.Data.ToString()!)!;
+
+        await _ConnectionService.CreateConnection(connectionCreated);
+
+        string? error = await _ConnectionService.ConnectTo(connectionCreated);
+        if(error != null)
+{
+            await _DialogService.ShowMessageBox("Error", error);
             return;
         }
-
-        try
-        {
-
-            ConnectionOperationModel connectionOperationModel = JsonSerializer.Deserialize<ConnectionOperationModel>(result.Data.ToString()!)!;
-            Connection connectionCreated = connectionOperationModel.ConnectionModel!;
-            connections.Insert(0, connectionCreated);
-            await ConnectionHandler.SaveConnections(connections);
-
-            await ConnectionHandler.ConnectTo(connectionCreated);
-
-            NavigationManager.NavigateTo("mysql-dashboard");
-        }
-
-        catch (Exception e)
-        {
-            options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
-
-            var parameters = new DialogParameters<InfoDialog>();
-            parameters.Add(x => x.ContentText, e.Message.ToString());
-
-            dialog = await DialogService.ShowAsync<InfoDialog>("Error", parameters, options);
-        }
+            
+        _NavigationManager.NavigateTo("mysql-dashboard");
+        
     }
 }

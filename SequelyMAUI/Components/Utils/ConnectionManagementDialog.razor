@@ -1,25 +1,14 @@
 ﻿@using SequelyMAUI.Models
+@using SequelyMAUI.Entities
 @using SequelyMAUI.Components.Utils
 
-@inject IConnectionHandler ConnectionHandler
-@inject IDialogService DialogService
+@inject IConnectionService _ConnectionService
+@inject IDialogService _DialogService 
 
 
 <MudDialog Style="width: 20vw;">
     <DialogContent>
         <MudForm @bind-IsValid="@success" @ref="@form">
-            @* <MudTextField T="string" Label="Connection Name" Required="true" RequiredError="Connection name is required" OnlyValidateIfDirty="true" For="@(() => connectionModel.Name)"/>
-
-            <div class="d-inline-flex gap-6 my-4">
-                <MudTextField T="string" Label="Ip Address"
-             Required="true"
-                          RequiredError="IP Address is required" OnlyValidateIfDirty="true" For="@(() => connectionModel.Address)" />
-
-            <MudTextField T="int?" Label="Port" OnlyValidateIfDirty="true" Required="true"  For="@(() => connectionModel.Port)"/></div>
-                <div class="d-inline-flex gap-6 my-4">
-                <MudTextField T="string" Label="Username" Required="true" RequiredError="Username is required" OnlyValidateIfDirty="true" For="@(() => connectionModel.Username)"/>
-                    <MudTextField T="string" Label="Password" Required="true" RequiredError="Password is required" OnlyValidateIfDirty="true" For="@(() => connectionModel.Password)"/>
-                </div> *@
             <MudTextField T="string" Required="true" @bind-Value="@connectionModel!.Name" For="@(() => connectionModel!.Name)"/>
             <div class="d-inline-flex gap-6 my-4">
                 <MudTextField T="string" Required="true" @bind-Value="@connectionModel.Address" For="@(() => connectionModel.Address)" />
@@ -37,10 +26,10 @@
             @if(incomingConnection != null)
             {
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="delete" OnClick="DeleteConnection"></MudIconButton>
-                <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Info" Disabled=@(incomingConnection.IsIdentical(connectionModel) || !form.IsValid) aria-label="save" OnClick="SaveConnection"></MudIconButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Info" Disabled=@(incomingConnection.IsIdenticalTo(connectionModel) || !form.IsValid) aria-label="save" OnClick="OverwriteConnection"></MudIconButton>
             }
             <MudPaper Class="d-flex flex-row-reverse gap-4" Elevation="0">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled=@(!form.IsValid) Class="ml-auto" OnClick="Connect">Connect</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled=@(!form.IsValid || (incomingConnection != null && !incomingConnection.IsIdenticalTo(connectionModel))) Class="ml-auto" OnClick="Connect">Connect</MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled=@(!form.IsValid) Class="ml-auto" OnClick="TestConnection">Test</MudButton>
             </MudPaper>
         </MudPaper>
@@ -53,18 +42,15 @@
 
 @code {
 
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+    [Parameter] public ConnectionEntity? incomingConnection { get; set;}
 
-    [Parameter] public Connection? incomingConnection { get; set;}
+
+    MudForm form = new MudForm();
+    List<ConnectionOperationType> connectionOperations = new List<ConnectionOperationType>();
+    ConnectionEntity connectionModel = new ConnectionEntity();
 
     bool success = false;
-
-    MudForm form;
-
-    ConnectionOperationModel connectionOperationModel = new ConnectionOperationModel();
-
-    Connection connectionModel = new Connection();
-
 
 
     void Cancel() => MudDialog.Cancel();
@@ -72,71 +58,52 @@
     protected override void OnInitialized()
     {
         if (incomingConnection != null)
-        {
-            connectionModel = (Connection)incomingConnection.Clone();
-            
-        }
+            connectionModel = (ConnectionEntity)incomingConnection.Clone();
     }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if (incomingConnection != null)
-        {
             await form.Validate();
-        }
     }
 
     private void Connect()
     {
-        //await form.Validate();
-
         if (!form.IsValid)
+            return;
+
+        if(incomingConnection != null)
         {
+            connectionOperations.Add(ConnectionOperationType.Connect);
+            MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionOperations)));
+            
             return;
         }
+       
 
-        connectionOperationModel.ConnectionModel = connectionModel;
-        connectionOperationModel.Operations.Add(ConnectionOperationType.Connect);
-
-        MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionOperationModel)));
+        MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionModel)));
     }
 
     private async Task TestConnection()
     {
-        //await form.Validate();
-
         if (!form.IsValid)
-        {
             return;
-        }
 
-        try
-        {
-            await ConnectionHandler.ConnectTo(connectionModel!);
-            await ConnectionHandler.Disconnect();
-        }
-        catch (Exception e)
-        {
-            var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
-
-            var parameters = new DialogParameters<InfoDialog>();
-            parameters.Add(x => x.ContentText, e.Message.ToString());
-
-            var dialog = await DialogService.ShowAsync<InfoDialog>("Error", parameters, options);
-        }
+        string? error = await _ConnectionService.TestConnection(connectionModel!);
+        if (error != null)
+            await _DialogService.ShowMessageBox("Error", error);
     }
 
     private void DeleteConnection()
     {
-        connectionOperationModel.Operations.Insert(0, ConnectionOperationType.Delete);
-
-        MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionOperationModel)));
+        connectionOperations.Insert(0, ConnectionOperationType.Delete);
+        MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionOperations)));
 
     }
 
-    private void SaveConnection()
+    private void OverwriteConnection()
     {
         incomingConnection!.Copy(connectionModel);
-        //connectionOperationModel.Operations.Insert(0, ConnectionOperationType.Save
+        connectionOperations.Insert(0, ConnectionOperationType.Edit);
     }
 }

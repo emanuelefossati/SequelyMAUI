@@ -5,17 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using SequelyMAUI.Models;
+using SequelyMAUI.Entities;
 
 namespace SequelyMAUI.Components.Utils
 {
     public enum ConnectionOperationType
     {
         Connect,
-        Delete
-    }
-    internal class ConnectionOperationModel
-    {
-        public List<ConnectionOperationType> Operations { get; set; } = new List<ConnectionOperationType>();
-        public Connection? ConnectionModel { get; set; }
+        Edit,
+        Delete,
     }
 }

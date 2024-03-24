@@ -1,12 +1,14 @@
-﻿@using SequelyMAUI.Models
-@inject IConnectionHandler ConnectionHandler
-@inject IDbHandler DbHandler
+﻿@using SequelyMAUI.Entities
+@using SequelyMAUI.Models
+@inject IConnectionService _ConnectionService
+@inject ITabService _TabService
+@inject IDbService _DbService
 
 <link href="https://use.fontawesome.com/releases/v5.14.0/css/all.css" rel="stylesheet">
 
 <MudTreeView ServerData="LoadTables" Items="dbTreeItems" Hover="true" Color="Color.Info">
     <ItemTemplate>
-        <MudTreeViewItem Value="@context" Icon="@context.Icon" LoadingIconColor="Color.Info" CanExpand="@context.CanExpand" Text="@context.Title" OnDoubleClick="@(() => OnDoubleClick.InvokeAsync(context.Value))"/>
+        <MudTreeViewItem Value="@context" Icon="@context.Icon" LoadingIconColor="Color.Info" CanExpand="@context.CanExpand" Text="@context.Title" OnDoubleClick="@(() => AddTab(context.Value))"/>
     </ItemTemplate>
 </MudTreeView>
         
@@ -15,15 +17,12 @@
 {
 
     [Parameter]
-    public List<Database> Databases { get; set; } = new List<Database>();
+    public List<DatabaseEntity> Databases { get; set; } = new List<DatabaseEntity>();
 
-    [Parameter] 
-    public EventCallback<MySqlElement> OnDoubleClick { get; set; }
-    //public HashSet<Database> dbs { get; set; } = new HashSet<Database>();
+    [Parameter]
+    public EventCallback UpdateParentState { get; set; }
+
     public HashSet<TreeItemData> dbTreeItems { get; set; } = new HashSet<TreeItemData>();
-
-    //string SelectedItem { get; set; }
-
 
 
     protected override void OnInitialized()
@@ -35,7 +34,7 @@
 
     public class TreeItemData
     {
-        public MySqlElement Value { get; set; }
+        public SqlEntity Value { get; set; }
 
         public string Title { get; set; }
         public string Icon { get; set; }
@@ -43,17 +42,17 @@
 
         public HashSet<TreeItemData>? TreeItems { get; set; }
 
-        public TreeItemData(MySqlElement value)
+        public TreeItemData(SqlEntity value)
         {
             Value = value;
             Title = value.Name;
 
-            if(Value is Database)
+            if(Value is DatabaseEntity)
             {
                 Icon = "fas fa-database";
                 CanExpand = true;
             }
-            else if(Value is Table)
+            else if(Value is TableEntity)
             {
                 Icon = Icons.Material.Filled.TableChart;
                 CanExpand = false;
@@ -65,10 +64,51 @@
 
     }
 
+    private async Task AddTab(SqlEntity entity)
+    {
+        TabEntity tab;
+
+        if(entity is DatabaseEntity)
+        {
+            var db = entity as DatabaseEntity;
+
+            tab = new TabEntity
+            {
+                Connection = _ConnectionService.CurrentConnection!,
+                Name = db!.Name,
+                Query = $"SHOW TABLES FROM {db!.Name}"
+            };
+
+        }
+        else if(entity is TableEntity)
+        {
+            var table = entity as TableEntity;
+
+            tab = new TabEntity
+            {
+                Connection = _ConnectionService.CurrentConnection!,
+                Name = table!.Name,
+                Query = $"SELECT * FROM {table!.Database!.Name}.{table!.Name}"
+            };
+        }
+
+        else
+        {
+            Debug.Assert(false, "SqlEntity must be either a database or a table");
+            return;
+        }
+        
+
+        await _TabService.CreateTab(tab);
+
+        await UpdateParentState.InvokeAsync();
+    }
+
     private async Task<HashSet<TreeItemData>> LoadTables(TreeItemData db)
     {
-        var tables = await DbHandler.GetTables((db.Value as Database)!);
+        var tables = await _DbService.GetTables((db.Value as DatabaseEntity)!);
 
         return tables.Select(t => new TreeItemData(t)).ToHashSet();
+
     }
 }

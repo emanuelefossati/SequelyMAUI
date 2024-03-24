@@ -1,11 +1,13 @@
 ﻿@inherits LayoutComponentBase
 
 @using SequelyMAUI.Components.Pages 
+@using SequelyMAUI.Entities
 @using SequelyMAUI.Models
 @using SequelyMAUI.Components.Utils
 
-@inject IConnectionHandler ConnectionHandler
-@inject IDialogService DialogService
+@inject IConnectionService _ConnectionService
+@inject IDialogService _DialogService
+
 @inject NavigationManager NavigationManager
 
 <MudThemeProvider IsDarkMode="true"/>
@@ -13,51 +15,28 @@
 <MudSnackbarProvider />
 
 
-@*     <div class="page">
-        <div class="sidebar">
-            <NavMenu />
-        </div>
-
-        <main>
-            <div class="top-row px-4">
-                <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            </div>
-
-            <article class="content px-4">
-                @Body
-            </article>
-        </main>
-    </div> *@
-
 @Body
 
 
 
 @code
 {
-    Connection? previousConnection;
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+            return;
+
         try
         {
-            previousConnection = await ConnectionHandler.RetrievePreviousConnection();
+            await _ConnectionService.RetrievePreviousConnection();
         }
         catch (Exception e)
         {
-            await ConnectionHandler.Disconnect();
-            
-            var options = new DialogOptions { CloseButton = true, DisableBackdropClick = true };
-
-            var parameters = new DialogParameters<InfoDialog>();
-            parameters.Add(x => x.ContentText, e.Message.ToString());
-
-            var dialog = await DialogService.ShowAsync<InfoDialog>("Error", parameters, options);
-            var result = await dialog.Result;
-        } 
+            await _DialogService.ShowMessageBox("Error", e.Message.ToString());
+        }
         finally
         {
-            if (previousConnection == null)
+            if (_ConnectionService.CurrentConnection == null)
                 NavigationManager.NavigateTo("connections");
 
             else

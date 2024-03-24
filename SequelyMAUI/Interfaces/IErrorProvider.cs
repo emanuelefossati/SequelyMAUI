@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SequelyMAUI.Models
-{
-    public class Database : MySqlElement
-    {
-        public List<Table>? Tables { get; set; }
 
+namespace SequelyMAUI.Interfaces
+{
+    public interface IErrorProvider
+    {
+        public Task ProvideError(string message);
     }
 }
