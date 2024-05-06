@@ -1,0 +1,21 @@
+﻿@using SequelyMAUI.Entities
+@using SequelyMAUI.Models
+@using System.Data
+@using System.Dynamic
+@inject IDbService _DbService
+@inject ITabService _TabService
+@inject IDialogService _DialogService
+
+ 
+ <MudTabs Outlined="false">
+    <MudTabPanel Icon="@Icons.Material.Filled.TableRows" Text="Table list">
+        <ChildContent>
+           <DataComponent/>
+        </ChildContent>
+    </MudTabPanel>
+    <MudTabPanel Text="Create Table" Icon="@Icons.Material.Filled.Add">
+        <ChildContent>
+            <TableCreationComponent/>
+        </ChildContent>
+    </MudTabPanel>
+</MudTabs>

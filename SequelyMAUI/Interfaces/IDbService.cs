@@ -22,6 +22,7 @@ namespace SequelyMAUI.Interfaces
         public Task<List<Object>> GetRows(Table table);
 
         public Task<List<Dictionary<string, object>>> PerformQuery(string query);
-        public Task<DataTable> RunQuery(string query);
+        public Task<DataTable?> RunQueryAsync(string query);
+        public DataTable RunQuery(string query);
     }
 }

@@ -1,0 +1,130 @@
+﻿@using System.Data
+@using SequelyMAUI.Entities
+
+@inject IDbService _DbService
+@inject ITabService _TabService
+
+@if (Data != null && Data.Columns.Count > 0)
+{
+
+
+    <MudSimpleTable Hover="@true" Bordered="@true" Dense="@true" Style="margin-top: 30px;">
+
+        <thead>
+
+            <tr>
+                <th style="width: 50px; text-align:center !important"><MudCheckBox @bind-Value="@TabEntity.State.AllRowsSelected" Color="Color.Primary" @onclick="@ToggleAllRowsSelected" Dense="true" Size="Size.Small" /></th>
+                @foreach (DataColumn c in Data.Columns)
+                {
+                    <th>@c</th>
+                }
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @for(var index = _PageSize * (_SelectedPage-1); 
+           index < Data.Rows.Count && index < _PageSize * _SelectedPage;
+                index++)
+            {
+                var row = Data.Rows[index];
+                <tr @onmouseover="@(() => SelectedRow = row)">
+                    <td><MudCheckBox @bind-Value="@(SelectionDictionary![row])" Color="Color.Primary" Dense="true" Size="Size.Small" /></td>
+                    @foreach (DataColumn c in Data.Columns)
+                    {
+                        <td>@row[c]</td>  
+                    }
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <div style="position:fixed; bottom:100px;right:200px; display: flex; width: 150px; justify-content:space-between">
+        <MudFab Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="@(async () => await DeleteElements())" />
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="@(async () => await RefreshElements())" />
+    </div>
+
+    int paginatorCount = (int)Math.Ceiling(Decimal.Divide(Data.Rows.Count, _PageSize));
+    if (paginatorCount > 1)
+    {
+        <div style="display: flex; justify-content:center">
+            <MudPagination BoundaryCount="1" MiddleCount="1" Count="@(paginatorCount)" @bind-Selected="@_SelectedPage" Style="margin-top: 20px" />
+        </div>
+    }
+
+}
+
+@code 
+{
+    [CascadingParameter(Name = "TabEntity")]
+    public TabEntity TabEntity { get; set; } = new TabEntity();
+
+    [Parameter]
+    public EventCallback<TabEntity> RemoveTab { get; set; }
+
+    [Parameter]
+    public bool? IsFromQueryTab { get; set; } = false;
+
+    public DataTable? Data { get; set; }
+
+    private Dictionary<DataRow, bool>? SelectionDictionary { get; set; }
+    private DataRow? SelectedRow;
+
+    private int _SelectedPage = 1;
+    private int _PageSize = 10;
+
+    protected override void OnInitialized()
+    {
+        Data = TabEntity.State.Data;
+
+
+        SelectionDictionary = TabEntity.State.SelectionDictionary!;
+    }
+
+    public void ToggleAllRowsSelected()
+    {
+        foreach (DataRow row in Data!.Rows)
+        {
+            SelectionDictionary![row] = (bool)!(TabEntity.State.AllRowsSelected!); 
+        }
+    }
+
+    public async Task RefreshElements()
+    {
+        if(! await _TabService.CheckIfTabElementExists(TabEntity))
+        {
+            await App.Current!.MainPage!.DisplayAlert("Error", "Element does not exist in the current host", "Cancel");
+            await RemoveTab.InvokeAsync(TabEntity);
+
+            return;
+        }
+
+        Debug.WriteLine("Refreshing data");
+        Debug.WriteLine(TabEntity.DataFetchingQuery);
+
+        TabEntity.State.Data = await _DbService.RunQueryAsync(TabEntity.DataFetchingQuery!);
+
+        TabEntity.State.SelectionDictionary = new Dictionary<DataRow, bool>();
+
+        foreach (DataRow dataRow in TabEntity.State.Data!.Rows)
+            TabEntity.State.SelectionDictionary!.Add(dataRow!, false);
+
+        Data = TabEntity.State.Data;
+        SelectionDictionary = TabEntity.State.SelectionDictionary;
+
+        StateHasChanged();
+    }
+
+    public async Task DeleteElements()
+    {
+        if (!await _TabService.CheckIfTabElementExists(TabEntity))
+        {
+            await App.Current!.MainPage!.DisplayAlert("Error", "Element does not exist in the current host", "Cancel");
+            await RemoveTab.InvokeAsync(TabEntity);
+
+            return;
+        }
+
+
+    }
+}

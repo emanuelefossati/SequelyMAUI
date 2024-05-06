@@ -1,51 +1,68 @@
 ﻿@using Models
 @using System.Text.Json
 @using SequelyMAUI.Components.Utils
+@using SequelyMAUI.Components.Utils.Tabs
 @using SequelyMAUI.Entities
 @using Microsoft.EntityFrameworkCore
 
-
 @inject IConnectionService _ConnectionService
 @inject IDbService _DbService
-@inject NavigationManager _NavigationManager
 @inject ITabService _TabService
+@inject NavigationManager _NavigationManager
 
 @page "/mysql-dashboard"
-
-@* <ConnectionDrawer OnDoubleClick="AddTab" Databases="Databases"/>
-
-<MudContainer Class="mt-6">
-    <MudAlert Severity="Severity.Success" Class="mt-16">Text inside MudContainer</MudAlert>
-</MudContainer> *@
-
 
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _open = !_open)" />
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Link="https://github.com/MudBlazor/MudBlazor" Target="_blank" />
+        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Target="_blank" />
     </MudAppBar>
     <MudDrawer @bind-Open="@_open" Elevation="1" Width="300px">
-        <MudDrawerHeader>
+        <MudDrawerHeader Style="display: flex; justify-content: space-between; align-items:center;">
+            @* <div style="display: flex; justify-content: space-between"> *@
             <MudText Typo="Typo.h6">@(_ConnectionService.CurrentConnection!.Name)</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@(async () => {
+                Debug.WriteLine("Refreshing databases");
+                Databases.Clear();
+                Databases.AddRange(await _DbService.GetDatabases());
+
+                StateHasChanged();
+            })"></MudIconButton>
+         @*    </div> *@
+            
         </MudDrawerHeader>
        
-        <DatabaseTreeView Databases="Databases" UpdateParentState="StateHasChanged"></DatabaseTreeView>
+        <DatabaseTreeView Databases="@Databases" UpdateParentState="@StateHasChanged"></DatabaseTreeView>
 
     </MudDrawer>
     <MudMainContent Class="pt-16">
-        <MudContainer Class="mt-6">
 
-             @if (_TabService.Tabs.Count() > 0)
+        <MudContainer Class="mt-6">
+             @if (_TabService.TabEntities.Count() > 0)
             {
-                 <MudDynamicTabs ref="@tabs" AddIconToolTip="Click to add a new tab" CloseIconToolTip="Close tab" CloseTab="@((MudTabPanel panel) => _TabService.DeleteTab((panel.ID as TabEntity)!))"
-                                PanelClass="px-4 py-6" Elevation="4" Rounded ApplyEffectsToContainer AddIconStyle="display: none;" @bind-ActivePanelIndex="@(_TabService.SelectedTabPanelIndex)">
-                @foreach (var tab in _TabService.Tabs.ToList())
+                 <MudDynamicTabs ref="@tabs" AddIconToolTip="Click to add a new tab" CloseIconToolTip="Close tab" CloseTab="@((MudTabPanel panel) => RemoveTab((panel.ID as TabEntity)!))"
+                                PanelClass="px-4 py-6" Elevation="4" Rounded ApplyEffectsToContainer AddIconStyle="display: none;" ActivePanelIndex="@_TabService.SelectedTabPanelIndex" ActivePanelIndexChanged="@((int newIndex) => UpdateIndex(newIndex))">
+                @foreach (var tab in _TabService.Tabs)
                 {
-                    <MudTabPanel ID="@(tab)" Label="@tab.Name" Text="@tab.Name" Style="text-transform:inherit">
+                    <MudTabPanel ID="@(tab)" Label="@tab.Name" Text="@tab.Name" Style="text-transform:inherit" >
                          <ChildContent>
-                            <TabContent TabEntity="@tab" UpdateParentState="StateHasChanged"></TabContent>
-                        </ChildContent>
+                                <CascadingValue Value="@tab" Name="TabEntity">
+
+                                    <MudTabs Outlined="false" @bind-ActivePanelIndex="@(tab.State.SubTabIndex)">
+                                    <MudTabPanel Icon="@Icons.Material.Filled.TableRows" Text="List">
+                                        <ChildContent>
+                                            <DataComponent RemoveTab="@RemoveTab"/>
+                                        </ChildContent>
+                                    </MudTabPanel>
+                                    <MudTabPanel Text="Query" Icon="@Icons.Material.Filled.Terminal">
+                                        <ChildContent>
+                                            <QueryComponent/>
+                                        </ChildContent>
+                                    </MudTabPanel>
+                                </MudTabs>
+                            </CascadingValue>
+                        </ChildContent> 
                     </MudTabPanel>
                 } 
                 </MudDynamicTabs>
@@ -60,20 +77,63 @@
 @code
 {
     MudDynamicTabs tabs = new MudDynamicTabs();
-
     List<DatabaseEntity> Databases = new List<DatabaseEntity>();
-
-    TabContent tabContent = new TabContent();
 
 
     int activeTabIndex = 0;
+    bool HasStateChanged;
     bool _open = true;
+    int updatedIndex = -1;
+
 
     protected async override Task OnInitializedAsync()
     {
         _DbService.CurrentMySqlConnection = _ConnectionService.CurrentConnection!.ActualConnection;
+
         Databases = await _DbService.GetDatabases();
-        
+
         await _TabService.Init();
+
+        Debug.WriteLine($"current tab index: {_TabService.SelectedTabPanelIndex}");
+
     }
+
+    public async Task RemoveTab(TabEntity tab)
+    {
+        if (_TabService.SelectedTabPanelIndex == _TabService.Tabs.IndexOf(tab))
+        {
+            if (_TabService.SelectedTabPanelIndex + 1 < _TabService.Tabs.Count())
+                updatedIndex = _TabService.SelectedTabPanelIndex;
+            else
+                updatedIndex = _TabService.SelectedTabPanelIndex - 1;
+        }
+        await _TabService.DeleteTab(tab);
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (updatedIndex != -1)
+        {
+            //Bug fix for MudDynamicTabs not updating the selected tab after removal
+            //Need to swap the selected tab to another tab and then back to the original tab
+
+            _TabService.SelectedTabPanelIndex = -1;
+            StateHasChanged();
+
+            _TabService.SelectedTabPanelIndex = updatedIndex;
+            StateHasChanged();
+            
+            updatedIndex = -1;
+            await _TabService.StoreTabPanelIndex();
+        }
+    }
+
+    private void UpdateIndex(int index)
+    {
+        _TabService.SelectedTabPanelIndex = index;
+        _TabService.StoreTabPanelIndex();
+
+    }
+    
 }

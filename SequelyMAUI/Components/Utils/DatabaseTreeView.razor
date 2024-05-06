@@ -8,14 +8,13 @@
 
 <MudTreeView ServerData="LoadTables" Items="dbTreeItems" Hover="true" Color="Color.Info">
     <ItemTemplate>
-        <MudTreeViewItem Value="@context" Icon="@context.Icon" LoadingIconColor="Color.Info" CanExpand="@context.CanExpand" Text="@context.Title" OnDoubleClick="@(() => AddTab(context.Value))"/>
+        <MudTreeViewItem Value="@context" Icon="@context.Icon" LoadingIconColor="Color.Info" CanExpand="@context.CanExpand" Text="@context.Title" OnDoubleClick="@(() => AddTab(context))"/>
     </ItemTemplate>
 </MudTreeView>
         
 
 @code 
 {
-
     [Parameter]
     public List<DatabaseEntity> Databases { get; set; } = new List<DatabaseEntity>();
 
@@ -25,8 +24,19 @@
     public HashSet<TreeItemData> dbTreeItems { get; set; } = new HashSet<TreeItemData>();
 
 
-    protected override void OnInitialized()
+    // protected override void OnInitialized()
+    // {
+    //     Debug.WriteLine("DatabaseTreeView: OnInitializedAsync");
+
+    //     foreach (var db in Databases)
+    //         dbTreeItems.Add(new TreeItemData(db));
+    // }
+
+    protected override void OnParametersSet()
     {
+
+        dbTreeItems.Clear();
+
         foreach (var db in Databases)
             dbTreeItems.Add(new TreeItemData(db));
     }
@@ -64,45 +74,30 @@
 
     }
 
-    private async Task AddTab(SqlEntity entity)
+            /*
+                *
+                try
+                {
+                Data = _TabService.RetrieveCachedData(TabEntity);
+
+    if (Data == null)
     {
-        TabEntity tab;
-
-        if(entity is DatabaseEntity)
-        {
-            var db = entity as DatabaseEntity;
-
-            tab = new TabEntity
-            {
-                Connection = _ConnectionService.CurrentConnection!,
-                Name = db!.Name,
-                Query = $"SHOW TABLES FROM {db!.Name}"
-            };
-
-        }
-        else if(entity is TableEntity)
-        {
-            var table = entity as TableEntity;
-
-            tab = new TabEntity
-            {
-                Connection = _ConnectionService.CurrentConnection!,
-                Name = table!.Name,
-                Query = $"SELECT * FROM {table!.Database!.Name}.{table!.Name}"
-            };
-        }
-
-        else
-        {
-            Debug.Assert(false, "SqlEntity must be either a database or a table");
-            return;
-        }
-        
-
-        await _TabService.CreateTab(tab);
-
-        await UpdateParentState.InvokeAsync();
+        Data = await _DbService.RunQueryAsync(TabEntity.Query);
+        _TabService.CacheData(TabEntity, Data);
     }
+
+    hasInitializationFinished = true;
+        }
+        catch (Exception ex)
+             {
+     await Application.Current!.MainPage!.DisplayAlert("Error", ex.Message, "Cancel");
+     await _TabService.DeleteTab(TabEntity);
+     await UpdateParentState.InvokeAsync();
+     }
+     *
+     */
+
+
 
     private async Task<HashSet<TreeItemData>> LoadTables(TreeItemData db)
     {
@@ -110,5 +105,19 @@
 
         return tables.Select(t => new TreeItemData(t)).ToHashSet();
 
+    }
+
+    private async Task AddTab(TreeItemData context)
+    {
+        Debug.WriteLine($"Addinging tab for {context.Title}");
+        try
+        {
+            await _TabService.CreateTab(context.Value);
+            await UpdateParentState.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            await Application.Current!.MainPage!.DisplayAlert("Error", ex.Message, "OK");
+        }
     }
 }

@@ -58,6 +58,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Remove="Components\Utils\Tabs\DataComponent.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Dapper" Version="2.1.35" />
         <PackageReference Include="DataAnnotationsExtensions" Version="5.0.1.27" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.3">
@@ -76,6 +80,18 @@
         <PackageReference Include="MudBlazor" Version="6.19.1" />
         <PackageReference Include="MySqlConnector" Version="2.3.6" />
         <PackageReference Include="sqlite-net-pcl" Version="1.8.116" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Components\Utils\Tabs\DataComponent.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Components\Utils\Tabs\DataComponent.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="Components\Utils\Tabs\DataComponent.razor" />
     </ItemGroup>
 
 </Project>

@@ -26,9 +26,9 @@
     <MudTable T="ConnectionEntity" Items="@(_ConnectionService.Connections.OrderByDescending(x => x.Id).ToList())" Hover="true" SortLabel="Sort By" Bordered="true" FixedHeader="true" Class="mt-15" Elevation="5"  Height="@(_ConnectionService.Connections.Count() <= 7 ? "fit-content" : "427px")" @bind-SelectedItem="@connectionSelected"
                OnRowClick="@SelectConnection">
         <HeaderContent>
-            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Name)">Connection Name</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Address)">Address</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Port!)">Port</MudTableSortLabel></MudTh>
+            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Name)"> *@Connection Name@* </MudTableSortLabel> *@</MudTh>
+            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Address)"> *@Address@* </MudTableSortLabel> *@</MudTh>
+            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Port!)"> *@Port@* </MudTableSortLabel> *@</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Connection Name">@context!.Name</MudTd>
@@ -95,7 +95,7 @@
 
         string? error = await _ConnectionService.ConnectTo(connectionCreated);
         if(error != null)
-{
+        {
             await _DialogService.ShowMessageBox("Error", error);
             return;
         }

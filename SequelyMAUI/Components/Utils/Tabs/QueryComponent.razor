@@ -1,0 +1,94 @@
+﻿@using System.Data
+@using SequelyMAUI.Entities
+
+@inject IDbService _DbService
+@inject ITabService _TabService
+@inject ISnackbar _Snackbar
+
+<MudTextField T="string" Variant="Variant.Outlined" Lines="10" @bind-Value="@TabEntity.State.TypingQuery" />
+
+@if(_IsLoading)
+{
+    <MudOverlay DarkBackground="true" Visible="true" >
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Style="margin:auto" />
+    </MudOverlay>
+
+}
+
+@if(Data != null)
+{
+    <MudSimpleTable>
+        <thead>
+            <tr>
+                @foreach(DataColumn column in Data.Columns)
+                {
+                    <th>@column.ColumnName</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(DataRow row in Data.Rows)
+            {
+                <tr>
+                    @foreach(DataColumn column in Data.Columns)
+                    {
+                        <td>@row[column]</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+
+}
+
+<MudFab Color="Color.Tertiary" StartIcon="@Icons.Material.Filled.PlayArrow" Style="position:fixed; bottom:100px;right:200px" OnClick="@RunQuery"/>
+
+@code 
+{
+
+
+    [Parameter]
+    public EventCallback<TabEntity> RemoveTab { get; set; }
+
+    [CascadingParameter(Name = "TabEntity")]
+    public TabEntity TabEntity { get; set; } = new TabEntity();
+    public DataTable? Data { get; set; }
+    private bool _IsLoading { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+        _Snackbar.Configuration.VisibleStateDuration = 1000;
+        _Snackbar.Configuration.HideTransitionDuration = 500;
+        _Snackbar.Configuration.ShowTransitionDuration = 500;
+    }
+
+
+    async Task RunQuery()
+    {
+        if (!await _TabService.CheckIfTabElementExists(TabEntity))
+        {
+            await App.Current!.MainPage!.DisplayAlert("Error", "Element does not exist in the current host", "Cancel");
+            await RemoveTab.InvokeAsync(TabEntity);
+
+            return;
+        }
+
+        _IsLoading = true;
+
+        await _DbService.RunQueryAsync($"USE `{TabEntity.DbName}`");
+        Data = await _DbService.RunQueryAsync(TabEntity.State.TypingQuery);
+
+        _IsLoading = false;
+
+        if (Data == null)
+        {
+            return;
+        }
+
+        _Snackbar.Add("Query executed successfully", Severity.Success);
+
+
+    }
+}

@@ -54,7 +54,7 @@ namespace SequelyMAUI
             }
             catch (System.Exception ex)
             {
-                System.Console.WriteLine(ex.Message);
+                System.Console.WriteLine(ex.StackTrace);
                 throw;
             }
         }

@@ -18,10 +18,6 @@ namespace SequelyMAUI.Services
             optionsBuilder.UseSqlite("Data Source=sequely.db");
         }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<ConnectionEntity>().HasMany(c => c.Databases).WithOne().OnDelete(DeleteBehavior.Cascade);
-            modelBuilder.Entity<ConnectionEntity>().HasOne(c => c.ActualConnection).WithOne().OnDelete(DeleteBehavior.Cascade);
-        }   
+
     }
 }

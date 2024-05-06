@@ -23,8 +23,7 @@ namespace SequelyMAUI.Services
 
             return dbNames.Select(name => new DatabaseEntity 
             { 
-                Name = name, 
-                //Tables = this.GetTables(name).Result
+                Name = name
             
             }).ToList();
         }
@@ -139,28 +138,39 @@ namespace SequelyMAUI.Services
 
         }
 
-        public async Task<DataTable> RunQuery(string query)
+        public async Task<DataTable?> RunQueryAsync(string query)
         {
             if (CurrentMySqlConnection == null)
                 throw new Exception("No connection");
 
-            var reader = await CurrentMySqlConnection.ExecuteReaderAsync(query);
+            try
+            {
+                var reader = await CurrentMySqlConnection.ExecuteReaderAsync(query);
+
+                DataTable table = new DataTable();
+                table.Load(reader);
+
+                return table;
+            }
+            catch (Exception e)
+            {
+                await App.Current!.MainPage!.DisplayAlert("Error", e.Message, "OK");
+                return null;
+
+            }
+        }
+
+        public DataTable RunQuery(string query)
+        {
+            if (CurrentMySqlConnection == null)
+                throw new Exception("No connection");
+
+            var reader = CurrentMySqlConnection.ExecuteReader(query);
 
             DataTable table = new DataTable();
             table.Load(reader);
 
             return table;
         }
-
-        //public async Task<List<Dictionary<string, object>?>> PerformQuery(string query)
-        //{
-        //    if (CurrentMySqlConnection == null)
-        //        throw new Exception("No connection");
-
-
-
-        //    return rows.ToList();
-        //}
-
     }
 }
