@@ -125,6 +125,95 @@
             return;
         }
 
+        List<DataRow> rowsToDelete = SelectionDictionary!.Keys.Where(k => SelectionDictionary[k]).ToList();
 
+        if(rowsToDelete.Count == 0)
+        {
+            await App.Current!.MainPage!.DisplayAlert("Warning", "No rows selected", "Cancel");
+            return;
+        }
+
+        if (!await App.Current!.MainPage!.DisplayAlert("Warning", "Are you sure you want to delete the selected rows?", "Yes", "Cancel"))
+        {
+            return;
+        }
+
+        try
+        {
+            if (TabEntity.Type == TabType.Table)
+                await DeleteRowsFromTable(rowsToDelete);
+
+            else
+                await DropTablesFromDatabase(rowsToDelete);
+
+
+            await RefreshElements();
+        }
+
+        catch (Exception e)
+        {
+            await App.Current!.MainPage!.DisplayAlert("Error", e.Message, "Cancel");
+            return;
+        }
+    }
+
+    private async Task DeleteRowsFromTable(List<DataRow> rows)
+    {
+        _DbService.RunQuery($"use {TabEntity.DbName};");
+
+        string query = $"DELETE FROM {TabEntity.Name} WHERE (";
+
+        int columnsCount = Data!.Columns.Count;
+
+        for(int i = 0; i < columnsCount; i++)
+        {
+            query += $"{Data!.Columns[i]}";
+
+            if(i != columnsCount - 1)
+                query += ",";
+        }
+
+        query += ") IN (";
+
+        foreach (DataRow row in rows)
+        {
+            query += "(";
+
+            for (int i = 0; i < columnsCount; i++)
+            {
+                query += $"'{row[i]}'";
+
+                if (i != columnsCount - 1)
+                    query += ",";
+            }
+
+            query += ")";
+
+            if (row != rows.Last())
+                query += ",";
+
+
+        }
+
+        query += ")";
+
+        await _DbService.RunQueryAsync(query);
+    }
+
+    private async Task DropTablesFromDatabase(List<DataRow> tables)
+{
+        _DbService.RunQuery($"use {TabEntity.DbName};");
+
+        string query = $"DROP TABLE ";
+
+        foreach (DataRow table in tables)
+        {
+            query += $"{table[0]}";
+
+            if (table != tables.Last())
+                query += ",";
+        }
+
+        await _DbService.RunQueryAsync(query);
     }
 }
