@@ -23,16 +23,13 @@ namespace SequelyMAUI.Entities
         public DataRow? SelectedRow { get; set; }
 
         public string TypingQuery { get; set; }
+        public DataTable? QueriedData { get; set; }
 
         public Dictionary<DataRow, bool>? SelectionDictionary { get; set; }
 
         public int SubTabIndex { get; set; }
 
         public bool? AllRowsSelected;
-
-
-
-
     }
 
     public class TabEntity

@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using SequelyMAUI.Interfaces;
-using SequelyMAUI.Models;
 using System.Text.Json;
 using SequelyMAUI.Entities;
 using MudBlazor;
@@ -10,52 +9,16 @@ using MudBlazor;
 
 namespace SequelyMAUI.Services
 {
-    internal class ConnectionService : IConnectionService
+    internal class ConnectionService(SQLiteContext context) : IConnectionService
     {
-        private readonly SQLiteContext _context;
+        private readonly SQLiteContext _context = context;
 
         public DbSet<ConnectionEntity> Connections => _context.Connections;
 
         public ConnectionEntity? CurrentConnection { get; private set; }
 
-        public ConnectionService(SQLiteContext context)
-        {
-            _context = context;
-        }
-
-        //public async Task<List<ConnectionEntity>> GetConnections()
-        //{
-        //    //string? json = await SecureStorage.Default.GetAsync("connections");
-
-        //    //if (json == null)
-        //    //{
-        //    //    var connections = new List<Connection>();
-
-        //    //    for(int i = 0; i < 20; i++)
-        //    //    {
-        //    //        connections.Add(new Connection
-        //    //        {
-        //    //            Name = $"Connection {i + 1}",
-        //    //            Address = "localhost",
-        //    //            Port = 3306,
-        //    //            Username = "root",
-        //    //            Password = ""
-        //    //        });
-        //    //    }
-
-        //    //    return connections;
-        //    //}
-
-        //    //return JsonSerializer.Deserialize<List<Connection>>(json)!;
-
-        //    return await _context.Connections.ToListAsync();
-        //}
-        
         public async Task EditConnection(ConnectionEntity connection)
         {
-            //string json = JsonSerializer.Serialize(connections);
-            //await SecureStorage.Default.SetAsync("connections", json);
-
             _context.Update(connection);
             await _context.SaveChangesAsync();
         }

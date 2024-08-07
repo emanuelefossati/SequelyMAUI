@@ -1,5 +1,4 @@
-﻿@using Models
-@using System.Text.Json
+﻿@using System.Text.Json
 @using SequelyMAUI.Components.Utils
 @using SequelyMAUI.Components.Utils.Tabs
 @using SequelyMAUI.Entities
@@ -16,21 +15,16 @@
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _open = !_open)" />
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Target="_blank" />
+        <MudIconButton Icon="@Icons.Material.Filled.PowerSettingsNew" Color="Color.Inherit" Target="_blank" OnClick="@Disconnect"/>
     </MudAppBar>
     <MudDrawer @bind-Open="@_open" Elevation="1" Width="300px">
         <MudDrawerHeader Style="display: flex; justify-content: space-between; align-items:center;">
-            @* <div style="display: flex; justify-content: space-between"> *@
-            <MudText Typo="Typo.h6">@(_ConnectionService.CurrentConnection!.Name)</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@(async () => {
-                Debug.WriteLine("Refreshing databases");
-                Databases.Clear();
-                Databases.AddRange(await _DbService.GetDatabases());
+            <MudText Typo="Typo.h6">@(_connectionName)</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="() => _visible = true"/>
 
-                StateHasChanged();
-            })"></MudIconButton>
-         @*    </div> *@
-            
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@(async () => {
+                    await RefreshDatabases();
+            })"></MudIconButton>     
         </MudDrawerHeader>
        
         <DatabaseTreeView Databases="@Databases" UpdateParentState="@StateHasChanged"></DatabaseTreeView>
@@ -70,25 +64,48 @@
 
         </MudContainer>
     </MudMainContent>
+
+    <MudDialog @bind-IsVisible="_visible" Options="_dialogOptions" Style="width:300px; padding: 10px;">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                Creating a new database
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <div style="display:flex;">
+                <MudTextField @bind-Value="_dbName" Label="Db Name" Variant="Variant.Text" Required></MudTextField> <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="@CreateDatabase" Disabled="@(_dbName == string.Empty)" />
+
+            </div>
+        </DialogContent>
+    </MudDialog>
+
+
 </MudLayout>
 
 
 
+
+
 @code
-{
+ {
     MudDynamicTabs tabs = new MudDynamicTabs();
     List<DatabaseEntity> Databases = new List<DatabaseEntity>();
 
+    private string _connectionName { get; set; } = string.Empty;
+
 
     int activeTabIndex = 0;
-    bool HasStateChanged;
-    bool _open = true;
-    int updatedIndex = -1;
+    private bool _open = true;
+    private int updatedIndex = -1;
 
+    private bool _visible = false;
+    private readonly DialogOptions _dialogOptions = new() { FullWidth = true };
+    private string _dbName { get; set; } = string.Empty;
 
     protected async override Task OnInitializedAsync()
     {
         _DbService.CurrentMySqlConnection = _ConnectionService.CurrentConnection!.ActualConnection;
+        _connectionName = _ConnectionService.CurrentConnection!.Name;
 
         Databases = await _DbService.GetDatabases();
 
@@ -116,14 +133,14 @@
         if (updatedIndex != -1)
         {
             //Bug fix for MudDynamicTabs not updating the selected tab after removal
-            //Need to swap the selected tab to another tab and then back to the original tab
+            //Need to swap the selected tab to another tab and then back to the original tab 
 
             _TabService.SelectedTabPanelIndex = -1;
             StateHasChanged();
 
             _TabService.SelectedTabPanelIndex = updatedIndex;
             StateHasChanged();
-            
+
             updatedIndex = -1;
             await _TabService.StoreTabPanelIndex();
         }
@@ -135,5 +152,40 @@
         _TabService.StoreTabPanelIndex();
 
     }
-    
+
+    private async Task CreateDatabase()
+    {
+        string query = $"CREATE DATABASE {_dbName}";
+
+        try
+        {
+            await _DbService.RunQueryAsync(query);
+
+            _visible = false;
+            _dbName = string.Empty;
+            await RefreshDatabases();
+
+        }
+        catch (Exception e)
+        {
+            await App.Current!.MainPage!.DisplayAlert("Error", e.Message, "Cancel");
+        }
+    }
+
+    private async Task RefreshDatabases()
+    {   
+        Debug.WriteLine("Refreshing databases");
+        Databases.Clear();
+        Databases.AddRange(await _DbService.GetDatabases());
+
+        StateHasChanged();
+    }
+
+    private void Disconnect()
+    {
+       
+        _NavigationManager.NavigateTo("connections");
+        _ConnectionService.Disconnect();
+    }
+
 }

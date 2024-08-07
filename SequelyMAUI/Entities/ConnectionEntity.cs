@@ -8,6 +8,7 @@ using MudBlazor;
 using DataAnnotationsExtensions;
 using MySqlConnector;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SequelyMAUI.Entities
 {
@@ -27,9 +28,10 @@ namespace SequelyMAUI.Entities
         [Label("Password")]
         public string Password { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public List<DatabaseEntity> Databases { get; set; } = new List<DatabaseEntity>();
 
-        [NotMapped]
+        [NotMapped, JsonIgnore]
         public MySqlConnection? ActualConnection { get; set; }
 
         public object Clone()

@@ -13,25 +13,17 @@ using System.Threading.Tasks;
 
 namespace SequelyMAUI.Services
 {
-    internal class TabService : ITabService
+    internal class TabService(SQLiteContext context, IMemoryCache memoryCache, IConnectionService connectionService, IDbService dbService) : ITabService
     {
-        private readonly SQLiteContext _Context;
-        private readonly IConnectionService _ConnectionService;
-        private readonly IMemoryCache _MemoryCache;
-        private readonly IDbService _DbService;
+        private readonly SQLiteContext _Context = context;
+        private readonly IConnectionService _ConnectionService = connectionService;
+        private readonly IMemoryCache _MemoryCache = memoryCache;
+        private readonly IDbService _DbService = dbService;
 
         public IQueryable<TabEntity> TabEntities => _Context.Tabs.Where(x => x.Connection == _ConnectionService.CurrentConnection!);
-        public List<TabEntity> Tabs { get; set; } = new List<TabEntity>();
+        public List<TabEntity> Tabs { get; set; } = [];
 
         public int SelectedTabPanelIndex { get; set; }
-
-        public TabService(SQLiteContext context, IMemoryCache memoryCache, IConnectionService connectionService, IDbService dbService)
-        {
-            _Context = context;
-            _MemoryCache = memoryCache;
-            _ConnectionService = connectionService;
-            _DbService = dbService;
-        }
 
         public async Task CreateTab(SqlEntity entity)
         {
@@ -116,9 +108,10 @@ namespace SequelyMAUI.Services
                     tab.State = new TabState()
                     {
                         Data = await _DbService.RunQueryAsync(tab.DataFetchingQuery),
-                        SelectionDictionary = new Dictionary<DataRow, bool>(),
+                        SelectionDictionary = [],
                         SubTabIndex = 0,
                         AllRowsSelected = false
+
                     };
 
                     foreach (DataRow dataRow in tab.State.Data!.Rows)
@@ -140,7 +133,6 @@ namespace SequelyMAUI.Services
             string query = $@"
                             SELECT
                                 t.TABLE_NAME as `Table`,
-                                t.TABLE_ROWS as `Rows`,
                                 CASE
                                     WHEN t.DATA_LENGTH < 1024 THEN CONCAT(t.DATA_LENGTH, ' Bytes')
                                     WHEN t.DATA_LENGTH < 1024 * 1024 THEN CONCAT(ROUND(t.DATA_LENGTH / 1024, 2), ' KB')
@@ -152,7 +144,7 @@ namespace SequelyMAUI.Services
                             FROM information_schema.TABLES AS t
                             WHERE t.TABLE_SCHEMA = '{db!.Name}'";
 
-            TabEntity tab = new TabEntity
+            TabEntity tab = new()
             {
                 Connection = _ConnectionService.CurrentConnection!,
                 Name = db!.Name,
@@ -162,7 +154,7 @@ namespace SequelyMAUI.Services
                 State = new TabState
                 {
                     Data = await _DbService.RunQueryAsync(query),
-                    SelectionDictionary = new Dictionary<DataRow, bool>(),
+                    SelectionDictionary = [],
                     SubTabIndex = 0,
                     AllRowsSelected = false,
                     TypingQuery = string.Empty
@@ -176,7 +168,7 @@ namespace SequelyMAUI.Services
         {
             string query = $"SELECT * FROM {table!.Database!.Name}.{table!.Name}";
 
-            TabEntity tab = new TabEntity
+            TabEntity tab = new()
             {
                 Type = TabType.Table,
                 Connection = _ConnectionService.CurrentConnection!,
@@ -186,7 +178,7 @@ namespace SequelyMAUI.Services
                 State = new TabState
                 {
                     Data = await _DbService.RunQueryAsync(query),
-                    SelectionDictionary = new Dictionary<DataRow, bool>(),
+                    SelectionDictionary = [],
                     SubTabIndex = 0,
                     AllRowsSelected = false,
                     TypingQuery = string.Empty

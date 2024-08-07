@@ -1,5 +1,4 @@
-﻿@using Models
-@using System.Text.Json
+﻿@using System.Text.Json
 @using SequelyMAUI.Components.Utils
 @using Entities
 
@@ -13,12 +12,7 @@
 
 <MudPaper Elevation="25">
     <MudToolBar>
-        <MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" Class="mr-5" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Add" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Edit" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Remove" Color="Color.Inherit" />
-        <MudIconButton Icon="@Icons.Material.Outlined.Settings" Color="Color.Inherit" />
-        <MudSpacer />
+        <MudText Typo="Typo.h6">Your MySQL connections</MudText>
     </MudToolBar>
 </MudPaper>
 
@@ -26,9 +20,9 @@
     <MudTable T="ConnectionEntity" Items="@(_ConnectionService.Connections.OrderByDescending(x => x.Id).ToList())" Hover="true" SortLabel="Sort By" Bordered="true" FixedHeader="true" Class="mt-15" Elevation="5"  Height="@(_ConnectionService.Connections.Count() <= 7 ? "fit-content" : "427px")" @bind-SelectedItem="@connectionSelected"
                OnRowClick="@SelectConnection">
         <HeaderContent>
-            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Name)"> *@Connection Name@* </MudTableSortLabel> *@</MudTh>
-            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Address)"> *@Address@* </MudTableSortLabel> *@</MudTh>
-            <MudTh>@* <MudTableSortLabel SortBy="new Func<ConnectionEntities, object>(x=>x.Port!)"> *@Port@* </MudTableSortLabel> *@</MudTh>
+            <MudTh> Connection Name</MudTh>
+            <MudTh>Address</MudTh>
+            <MudTh> Port </MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Connection Name">@context!.Name</MudTd>

@@ -17,7 +17,5 @@ namespace SequelyMAUI.Services
         {
             optionsBuilder.UseSqlite("Data Source=sequely.db");
         }
-
-
     }
 }

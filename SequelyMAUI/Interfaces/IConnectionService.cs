@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using SequelyMAUI.Entities;
-using SequelyMAUI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

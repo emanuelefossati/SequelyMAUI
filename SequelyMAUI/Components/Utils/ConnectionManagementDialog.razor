@@ -1,5 +1,4 @@
-﻿@using SequelyMAUI.Models
-@using SequelyMAUI.Entities
+﻿@using SequelyMAUI.Entities
 @using SequelyMAUI.Components.Utils
 
 @inject IConnectionService _ConnectionService
@@ -72,7 +71,7 @@
         if (!form.IsValid)
             return;
 
-        if(incomingConnection != null)
+        if(incomingConnection != null) // if we are editing a connection
         {
             connectionOperations.Add(ConnectionOperationType.Connect);
             MudDialog.Close(DialogResult.Ok(JsonSerializer.Serialize(connectionOperations)));
@@ -92,6 +91,8 @@
         string? error = await _ConnectionService.TestConnection(connectionModel!);
         if (error != null)
             await _DialogService.ShowMessageBox("Error", error);
+        else
+            await _DialogService.ShowMessageBox("Success", "Connection successful!");
     }
 
     private void DeleteConnection()

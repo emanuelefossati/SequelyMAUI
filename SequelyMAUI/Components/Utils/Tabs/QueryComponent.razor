@@ -15,29 +15,40 @@
 
 }
 
-@if(Data != null)
+@if (TabEntity.State.QueriedData != null)
 {
-    <MudSimpleTable>
+    <MudSimpleTable Dense="@true" Bordered="@true" Style="margin-top: 30px;">
         <thead>
             <tr>
-                @foreach(DataColumn column in Data.Columns)
+                @foreach (DataColumn column in TabEntity.State.QueriedData.Columns)
                 {
                     <th>@column.ColumnName</th>
                 }
             </tr>
         </thead>
         <tbody>
-            @foreach(DataRow row in Data.Rows)
-            {
+            @for (var index = _PageSize * (_SelectedPage - 1);
+           index < TabEntity.State.QueriedData.Rows.Count && index < _PageSize * _SelectedPage;
+           index++)
+           {
+                var row = TabEntity.State.QueriedData.Rows[index];
                 <tr>
-                    @foreach(DataColumn column in Data.Columns)
+                    @foreach (DataColumn c in TabEntity.State.QueriedData.Columns)
                     {
-                        <td>@row[column]</td>
+                        <td>@row[c]</td>
                     }
                 </tr>
-            }
+           }
         </tbody>
     </MudSimpleTable>
+
+    int paginatorCount = (int)Math.Ceiling(Decimal.Divide(TabEntity.State.QueriedData.Rows.Count, _PageSize));
+    if (paginatorCount > 1)
+    {
+        <div style="display: flex; justify-content:center">
+            <MudPagination BoundaryCount="1" MiddleCount="1" Count="@(paginatorCount)" @bind-Selected="@_SelectedPage" Style="margin-top: 20px" />
+        </div>
+    }
 
 
 }
@@ -53,8 +64,10 @@
 
     [CascadingParameter(Name = "TabEntity")]
     public TabEntity TabEntity { get; set; } = new TabEntity();
-    public DataTable? Data { get; set; }
     private bool _IsLoading { get; set; } = false;
+
+    private int _SelectedPage = 1;
+    private int _PageSize = 10;
 
     protected override void OnInitialized()
     {
@@ -62,6 +75,7 @@
         _Snackbar.Configuration.VisibleStateDuration = 1000;
         _Snackbar.Configuration.HideTransitionDuration = 500;
         _Snackbar.Configuration.ShowTransitionDuration = 500;
+
     }
 
 
@@ -78,11 +92,11 @@
         _IsLoading = true;
 
         await _DbService.RunQueryAsync($"USE `{TabEntity.DbName}`");
-        Data = await _DbService.RunQueryAsync(TabEntity.State.TypingQuery);
+        TabEntity.State.QueriedData = await _DbService.RunQueryAsync(TabEntity.State.TypingQuery);
 
         _IsLoading = false;
 
-        if (Data == null)
+        if (TabEntity.State.QueriedData == null)
         {
             return;
         }

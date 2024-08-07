@@ -1,5 +1,4 @@
 ﻿@using SequelyMAUI.Entities
-@using SequelyMAUI.Models
 @inject IConnectionService _ConnectionService
 @inject ITabService _TabService
 @inject IDbService _DbService
@@ -22,15 +21,6 @@
     public EventCallback UpdateParentState { get; set; }
 
     public HashSet<TreeItemData> dbTreeItems { get; set; } = new HashSet<TreeItemData>();
-
-
-    // protected override void OnInitialized()
-    // {
-    //     Debug.WriteLine("DatabaseTreeView: OnInitializedAsync");
-
-    //     foreach (var db in Databases)
-    //         dbTreeItems.Add(new TreeItemData(db));
-    // }
 
     protected override void OnParametersSet()
     {
@@ -73,31 +63,6 @@
         }
 
     }
-
-            /*
-                *
-                try
-                {
-                Data = _TabService.RetrieveCachedData(TabEntity);
-
-    if (Data == null)
-    {
-        Data = await _DbService.RunQueryAsync(TabEntity.Query);
-        _TabService.CacheData(TabEntity, Data);
-    }
-
-    hasInitializationFinished = true;
-        }
-        catch (Exception ex)
-             {
-     await Application.Current!.MainPage!.DisplayAlert("Error", ex.Message, "Cancel");
-     await _TabService.DeleteTab(TabEntity);
-     await UpdateParentState.InvokeAsync();
-     }
-     *
-     */
-
-
 
     private async Task<HashSet<TreeItemData>> LoadTables(TreeItemData db)
     {
